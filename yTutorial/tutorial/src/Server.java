@@ -11,11 +11,13 @@ import java.util.Map;
 public class Server {
     private ServerSocket serverSocket;
     private Map<String, String> commonDictionary = new HashMap<>();
+    private Dictionary dictionary;
 
     private int nrclients = 0;
 
     public Server(ServerSocket serverSocket) {
         this.serverSocket = serverSocket;
+        this.dictionary = new Dictionary();
     }
 
     public int getNrclients() {
@@ -33,7 +35,7 @@ public class Server {
                 String formattedDateTime = now.format(formatter);
 
                 System.out.println(formattedDateTime + ": A new client has connected");
-                ClientHandler clientHandler = new ClientHandler(socket);
+                ClientHandler clientHandler = new ClientHandler(socket, dictionary);
                 nrclients++;
 
                 Thread thread = new Thread(clientHandler);

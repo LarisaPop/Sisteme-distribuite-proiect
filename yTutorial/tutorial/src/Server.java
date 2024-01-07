@@ -1,3 +1,4 @@
+
 import javax.imageio.IIOException;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -10,18 +11,9 @@ import java.util.Map;
 
 public class Server {
     private ServerSocket serverSocket;
-    private Map<String, String> commonDictionary = new HashMap<>();
-    private Dictionary dictionary;
-
-    private int nrclients = 0;
 
     public Server(ServerSocket serverSocket) {
         this.serverSocket = serverSocket;
-        this.dictionary = new Dictionary();
-    }
-
-    public int getNrclients() {
-        return nrclients;
     }
 
     public void startServer() {
@@ -34,9 +26,8 @@ public class Server {
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
                 String formattedDateTime = now.format(formatter);
 
-                System.out.println(formattedDateTime + ": A new client has connected");
-                ClientHandler clientHandler = new ClientHandler(socket, dictionary);
-                nrclients++;
+                ClientHandler clientHandler = new ClientHandler(socket);
+                System.out.println(formattedDateTime + ": The client with username *" + clientHandler.clientUsername + "* has connected");
 
                 Thread thread = new Thread(clientHandler);
                 thread.start();

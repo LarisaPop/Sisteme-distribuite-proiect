@@ -3,27 +3,31 @@ import java.net.Socket;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Scanner;
+import java.util.HashMap;
+import java.util.Map;
 
-public class ClientHandler implements Runnable{
+public class ClientHandler implements Runnable {
+
+    private static final Map<String, String> dictionary;
+    static {
+        dictionary = new HashMap<>();
+    }
 
     public static ArrayList<ClientHandler> clientHandlers = new ArrayList<>();
     private Socket socket;
     BufferedReader bufferedReader;
     BufferedWriter bufferedWriter;
     String clientUsername;
-    private Dictionary dictionary;
 
-    public ClientHandler(Socket socket, Dictionary dictionary){
-        try{
+    public ClientHandler(Socket socket) {
+        try {
             this.socket = socket;
             this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
             this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             this.clientUsername = bufferedReader.readLine();
-            this.dictionary = dictionary;
             clientHandlers.add(this);
             broadCastMessage("SERVER: " + clientUsername + " has entered the chat");
-        }catch (IOException e){
+        } catch (IOException e) {
             closeEverything(socket, bufferedReader, bufferedWriter);
         }
     }
@@ -32,55 +36,51 @@ public class ClientHandler implements Runnable{
     public void run() {
         String messageFromClient;
 
-        while(socket.isConnected()){
+        while (socket.isConnected()) {
             try {
                 messageFromClient = bufferedReader.readLine();
                 broadCastMessage(messageFromClient);
-            }catch (IOException e){
-                closeEverything(socket,bufferedReader,bufferedWriter);
+            } catch (IOException e) {
+                closeEverything(socket, bufferedReader, bufferedWriter);
                 break;
             }
         }
     }
 
-    public void broadCastMessage(String messageToSend){
+    public void broadCastMessage(String messageToSend) {
         if ("menu".equals(messageToSend)) {
-             for(ClientHandler clientHandler : clientHandlers) {
+            for (ClientHandler clientHandler : clientHandlers) {
                 try {
-                    if(clientHandler.clientUsername.equals(clientUsername)) {
+                    if (clientHandler.clientUsername.equals(clientUsername)) {
                         clientHandler.bufferedWriter.write(
-                        "Alege una dintre optiuni:\n" +
-                        "1. Adauga cuvant\n" +
-                        "2. Modifica cuvant\n" +
-                        "3. Sterge cuvant\n" +
-                        "4. Cauta cuvant\n" +
-                        "0. Iesire din meniu");
+                                "Alege una dintre optiuni:\n" +
+                                        "1. Adauga cuvant\n" +
+                                        "2. Modifica cuvant\n" +
+                                        "3. Sterge cuvant\n" +
+                                        "4. Cauta cuvant\n" +
+                                        "0. Iesire din meniu");
                         clientHandler.bufferedWriter.newLine();
                         clientHandler.bufferedWriter.flush();
                     }
                 } catch (IOException e) {
-                    closeEverything(socket,bufferedReader,bufferedWriter);
+                    closeEverything(socket, bufferedReader, bufferedWriter);
                 }
-             }
+            }
         } else if (messageToSend.startsWith("menu option:")) {
-                try {
-                    int choice = Integer.parseInt(messageToSend.substring(messageToSend.length() - 1));
-                    switch (choice) {
+            try {
+                int choice = Integer.parseInt(messageToSend.substring(messageToSend.length() - 1));
+                switch (choice) {
                     case 1:
-                        System.out.println("ADD");
-                        addWord(clientUsername, "addWord");
+                        addWord();
                         break;
                     case 2:
-                        System.out.println("EDIT");
-                        editWord(clientUsername, "editWord");
+                        editWord();
                         break;
                     case 3:
-                        System.out.println("DELETE");
-                        deleteWord(clientUsername, "deleteWord");
+                        deleteWord();
                         break;
                     case 4:
-                        System.out.println("SEARCH");
-                        searchWord(clientUsername, "searchWord");
+                        searchWord();
                         break;
                     case 0:
                         bufferedWriter.write("Ieșire din meniu.");
@@ -88,30 +88,30 @@ public class ClientHandler implements Runnable{
                         bufferedWriter.flush();
                         return;
                     default:
-                        bufferedWriter.write("Opțiune invalidă. Reîncearcă.");
+                        bufferedWriter.write("Opțiune invalida. Reincearca.");
                         bufferedWriter.newLine();
                         bufferedWriter.flush();
                 }
-                } catch (NumberFormatException | IOException e) {
-                    System.out.println("Wrong choice");
-                    e.printStackTrace();
-                }
+            } catch (NumberFormatException | IOException e) {
+                System.out.println("Wrong choice");
+                e.printStackTrace();
+            }
         } else {
-            for(ClientHandler clientHandler : clientHandlers) {
-            try {
-                if(!clientHandler.clientUsername.equals(clientUsername)){
-                    clientHandler.bufferedWriter.write(messageToSend);
-                    clientHandler.bufferedWriter.newLine();
-                    clientHandler.bufferedWriter.flush();
+            for (ClientHandler clientHandler : clientHandlers) {
+                try {
+                    if (!clientHandler.clientUsername.equals(clientUsername)) {
+                        clientHandler.bufferedWriter.write(messageToSend);
+                        clientHandler.bufferedWriter.newLine();
+                        clientHandler.bufferedWriter.flush();
+                    }
+                } catch (IOException e) {
+                    closeEverything(socket, bufferedReader, bufferedWriter);
                 }
-            } catch (IOException e){
-                closeEverything(socket,bufferedReader,bufferedWriter);
             }
         }
-        }   
     }
 
-    private void addWord(String username, String option) {
+    private void addWord() {
         try {
             // Trimite mesajul către client pentru a introduce cuvântul
             bufferedWriter.write("Introdu cuvantul: ");
@@ -120,20 +120,24 @@ public class ClientHandler implements Runnable{
 
             // Primește cuvântul de la client
             String word = bufferedReader.readLine();
-            word = word.split(":")[1].trim();
+            if (dictionary.containsKey(word)) {
+                bufferedWriter.write("Cuvantul deja exista in dictionar");
+                bufferedWriter.newLine();
+                bufferedWriter.flush();
+            } else {
 
-            // Trimite mesajul către client pentru a introduce definiția cuvântului
-            bufferedWriter.write("Introdu definitia cuvantului: ");
-            bufferedWriter.newLine();
-            bufferedWriter.flush();
+                // Trimite mesajul către client pentru a introduce definiția cuvântului
+                bufferedWriter.write("Introdu definitia cuvantului: ");
+                bufferedWriter.newLine();
+                bufferedWriter.flush();
 
-            // Primește definiția de la client
-            String def = bufferedReader.readLine();
-            def = def.split(":")[1].trim();
+                // Primește definiția de la client
+                String def = bufferedReader.readLine();
 
-            // Poți continua și să citești definiția, sau să o primești de la utilizator aici
-            dictionary.addWord(word, def, username, option);
-            
+                // Poți continua și să citești definiția, sau să o primești de la utilizator aici
+                dictionary.put(word, def);
+            }
+
             // Trimite serverului cererea de adăugare
             // socket.getOutputStream().write(...);
         } catch (IOException e) {
@@ -141,7 +145,7 @@ public class ClientHandler implements Runnable{
         }
     }
 
-    private void editWord(String username, String option) {
+    private void editWord() {
         try {
             // Trimite mesajul către client pentru a introduce cuvântul de modificat
             bufferedWriter.write("Introdu cuvantul pe care doresti sa-l modifici: ");
@@ -150,19 +154,20 @@ public class ClientHandler implements Runnable{
 
             // Primește cuvântul de la client
             String word = bufferedReader.readLine();
-            word = word.split(":")[1].trim();
-
-            // Trimite mesajul către client pentru a introduce noua definiție a cuvântului
-            bufferedWriter.write("Introdu noua definitie a cuvantului: ");
-            bufferedWriter.newLine();
-            bufferedWriter.flush();
-
-            // Primește noua definiție de la client
-            String newDef = bufferedReader.readLine();
-            newDef = newDef.split(":")[1].trim();
 
             // Poți continua și să citești noua definiție aici
-            dictionary.editWord(word, newDef, username, option);
+            if (dictionary.containsKey(word)) {
+                // Trimite mesajul către client pentru a introduce noua definiție a cuvântului
+                bufferedWriter.write("Introdu noua definitie a cuvantului: ");
+                bufferedWriter.newLine();
+                bufferedWriter.flush();
+
+                // Primește noua definiție de la client
+                String newDef = bufferedReader.readLine();
+                dictionary.put(word, newDef);
+            } else bufferedWriter.write("Cuvantul nu exista in dictionar");
+            bufferedWriter.newLine();
+            bufferedWriter.flush();
 
             // Trimite serverului cererea de modificare
             // socket.getOutputStream().write(...);
@@ -171,7 +176,7 @@ public class ClientHandler implements Runnable{
         }
     }
 
-    private void deleteWord(String username, String option) {
+    private void deleteWord() {
         try {
             // Trimite mesajul către client pentru a introduce cuvântul de șters
             bufferedWriter.write("Introdu cuvantul pe care doresti sa-l stergi: ");
@@ -180,9 +185,12 @@ public class ClientHandler implements Runnable{
 
             // Primește cuvântul de la client
             String word = bufferedReader.readLine();
-            word = word.split(":")[1].trim();
 
-            dictionary.deleteWord(word, username, option);
+            if (dictionary.containsKey(word)) {
+                dictionary.remove(word);
+            } else bufferedWriter.write("Cuvantul nu exista in dictionar");
+            bufferedWriter.newLine();
+            bufferedWriter.flush();
 
             // Trimite serverului cererea de ștergere
             // socket.getOutputStream().write(...);
@@ -191,7 +199,7 @@ public class ClientHandler implements Runnable{
         }
     }
 
-    private void searchWord(String username, String option) {
+    private void searchWord() {
         try {
             // Trimite mesajul către client pentru a introduce cuvântul de căutat
             bufferedWriter.write("Introdu cuvantul pe care doresti sa-l cauti: ");
@@ -200,10 +208,11 @@ public class ClientHandler implements Runnable{
 
             // Primește cuvântul de la client
             String word = bufferedReader.readLine();
-            word = word.split(":")[1].trim();
 
             // Trimite mesajul către client cu definiția cuvântului
-            bufferedWriter.write("Definitia este: " + dictionary.searchWord(word, username, option));
+            if (dictionary.get(word) == null)
+                bufferedWriter.write("Nu exista acel cuvant in dictionar");
+            else bufferedWriter.write("Definitia este: " + dictionary.get(word));
             bufferedWriter.newLine();
             bufferedWriter.flush();
 
@@ -214,7 +223,7 @@ public class ClientHandler implements Runnable{
         }
     }
 
-    public void removeClientHandler(){
+    public void removeClientHandler() {
         clientHandlers.remove(this);
         broadCastMessage("SERVER: " + clientUsername + " has left the chat");
 
@@ -225,19 +234,19 @@ public class ClientHandler implements Runnable{
         System.out.println("SERVER LOG: " + formattedDateTime + " - " + clientUsername + " has left the chat");
     }
 
-    public void closeEverything(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter){
+    public void closeEverything(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter) {
         removeClientHandler();
         try {
-            if(bufferedReader!=null){
+            if (bufferedReader != null) {
                 bufferedReader.close();
             }
-            if(bufferedWriter!=null){
+            if (bufferedWriter != null) {
                 bufferedWriter.close();
             }
-            if(socket!=null){
+            if (socket != null) {
                 socket.close();
             }
-        }catch (IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }

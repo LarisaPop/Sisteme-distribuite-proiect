@@ -1,8 +1,7 @@
-
 import java.io.*;
-import java.net.InetAddress;
 import java.net.Socket;
 import java.util.Scanner;
+
 
 public class Client {
     private Socket socket;
@@ -18,7 +17,6 @@ public class Client {
             this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             this.username = username;
             this.server=server;
-            // this.dictionary=new Dictionary();
         } catch (IOException e){
             closeEverything(socket, bufferedReader, bufferedWriter);
         }
@@ -103,7 +101,7 @@ public class Client {
         System.out.println("Enter your username for the group chat: ");
         String username = scanner.nextLine();
 
-        Socket socket = new Socket("10.111.10.228", 12345);
+        Socket socket = new Socket("10.111.11.69", 12345);
         Client client = new Client(socket, username, null);
         client.listenForMessage();
         client.sendMessage();
